@@ -70,5 +70,40 @@ export function msSQL(type: string) {
     }
 }
 
+export function oraSQL(type: string) {
+    switch (type) {
+        case 'integer':
+        case 'number':
+            return 'Integer';
+
+        case 'double':
+            return 'Float';
+
+        case 'boolean':
+            return 'Boolean';
+
+        case 'time':
+            return 'Time';
+
+        case 'date':
+        case 'timestamp':
+        case 'datetime':
+            return 'DateTime';
+
+        case 'char':
+        case 'varchar':
+        case 'text':
+            return 'String';
+
+        case 'blob':
+        case 'clob':
+            return 'IntegerList'
+
+        default:
+            return 'String';
+    }
+}
+
+
 type ColumnTypeTranslator = (type: string) => string
 export default ColumnTypeTranslator
