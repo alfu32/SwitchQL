@@ -9,10 +9,10 @@ class PgSqlProvider implements IDBProvider {
     constructor(private connString: string) { }
 
     connection() {
-        let conn = `const pgp = require('pg-promise')();\n`;
+        let conn = `const oracledb = require('oracledb')();\n`;
         conn += `const connect = {};\n`;
         conn += `// WARNING - Properly secure the connection string\n`;
-        conn += `connect.conn = pgp('${this.connString}');\n`;
+        conn += `connect.conn = oracledb.open('${this.connString}');\n`;
 
         return conn;
     }
