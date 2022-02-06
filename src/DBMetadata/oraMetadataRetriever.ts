@@ -123,9 +123,23 @@ async function getSchemaInfo(connString: string, schema: string): Promise<DBMeta
   }
   */
 }
-
+// On Windows and macOS, you can specify the directory containing the Oracle
+// Client Libraries at runtime, or before Node.js starts.  On other platforms
+// the system library search path must always be set before Node.js is started.
+// See the node-oracledb installation documentation.
+// If the search path is not correct, you will get a DPI-1047 error.
 function getDbPool(connString: string) {
-  const url = parse('https://github.com/foo/bar', true);
+  let libPath;
+if (process.platform === 'win32') {           // Windows
+  libPath = 'C:\\oracle\\instantclient_19_12';
+} else if (process.platform === 'darwin') {   // macOS
+  libPath = process.env.HOME + '/Downloads/instantclient_19_8';
+}
+if (libPath && fs.existsSync(libPath)) {
+  oracledb.initOracleClient({ libDir: libPath });
+}
+
+  const url = parse(connString, true);
   const hash = createHash('sha256');
   hash.update(connString);
 
