@@ -22,8 +22,23 @@ const query = `select
        col.owner as schema_name
 from sys.all_tab_columns col
 inner join sys.all_tables t on col.owner = t.owner 
-  and col.table_name = t.table_name`;
+  and col.table_name = t.table_name
+WHERE col.owner = '#{schema}#' `;
 
+const queryForeignKeys = `SELECT 
+    a.table_name as foreignTableName, 
+    a.column_name as foreignColumnName, 
+    a.constraint_name, 
+    b.table_name as "tableName",
+    b.column_name as "columnName"
+  FROM all_cons_columns a
+  JOIN all_constraints c 
+      ON a.owner = c.owner 
+        AND a.constraint_name = c.constraint_name
+ join all_cons_columns b
+      ON c.owner = b.owner 
+        AND c.r_constraint_name = b.constraint_name
+ WHERE c.constraint_type = 'R'`
 
 const query = `SELECT
                           t.table_name as "tableName",
