@@ -1,5 +1,6 @@
 import ConnData from '../models/connData';
-import * as pgInit from 'pg-promise'
+import * as oracledb from 'oracledb'
+import * as parseUrl from 'url-parse'
 import { createHash } from 'crypto'
 import { promiseTimeout } from '../util'
 import DBMetadata from '../models/dbMetadata';
@@ -15,7 +16,9 @@ const query = `select
        col.column_name as "columnName", 
        col.nullable as "isNullable",
        col.data_type as "dataType", 
-       col.data_length as "characterMaximumLength", 
+       col.data_length as "characterMaximumLength",
+       a.table_name as "foreignTableName", 
+       a.column_name as "foreignColumnName",
        col.data_precision, 
        col.data_scale,
        col.column_id, 
@@ -23,6 +26,17 @@ const query = `select
 from sys.all_tab_columns col
 inner join sys.all_tables t on col.owner = t.owner 
   and col.table_name = t.table_name
+left outer joi all_cons_columns a
+      ON a.owner=col.owner
+        AND a.table_name=col.table_name
+        AND a.column_name=col.column_name
+  JOIN all_constraints c 
+      ON a.owner = c.owner 
+        AND a.constraint_name = c.constraint_name
+ join all_cons_columns b
+      ON c.owner = b.owner 
+        AND c.r_constraint_name = b.constraint_name
+ WHERE c.constraint_type = 'R'
 WHERE col.owner = '#{schema}#' `;
 
 const queryForeignKeys = `SELECT 
@@ -64,9 +78,38 @@ const query = `SELECT
                         ORDER BY t.table_name`;
 
 async function getSchemaInfo(connString: string, schema: string): Promise<DBMetadata[]> {
+       
+       
+  let connection;
+
+  try {
+    const db = getDbPool(connString);
+    const q = query.replace('#{schema}#', schema)
+    const result = await connection.execute(q,
+      [schema],  // bind value for :id
+    );
+    metadataInfo=result.rows
+    console.log(result.rows);
+
+  } catch (err) {
+    console.error(err);
+    removeFromCache(connString);
+    throw err
+  }/* finally {
+    if (db) {
+      try {
+        await db.close();
+      } catch (err) {
+        console.error(err);
+        removeFromCache(connString);
+        
+      }
+    }
+  }*/
+  /*
   const db = getDbPool(connString);
   try {
-    const q = query.replace('#{schema}#', schema)
+    
 
     const metadataInfo = await promiseTimeout(
       10000,
@@ -75,12 +118,14 @@ async function getSchemaInfo(connString: string, schema: string): Promise<DBMeta
 
     return metadataInfo;
   } catch (err) {
-    removeFromCache(connString);
+    
     throw err;
   }
+  */
 }
 
 function getDbPool(connString: string) {
+  const url = parse('https://github.com/foo/bar', true);
   const hash = createHash('sha256');
   hash.update(connString);
 
@@ -89,8 +134,25 @@ function getDbPool(connString: string) {
   if (poolCache[digest]) {
     return poolCache[digest];
   }
+let db
+try {
+    db = await oracledb.getConnection( {
+      user          : url.username,
+      password      : url.password,
+      connectString : `${url.host}:${url.port}/${url.pathname}?${url.query}`,
+    });
 
-  const db = pgp(connString);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (db) {
+      try {
+        await db.close();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
   poolCache[digest] = db;
 
   return db;
@@ -106,7 +168,7 @@ function removeFromCache(connString: string) {
 function buildConnectionString(info: ConnData) {
   let connectionString = '';
   const port = info.port || 5432;
-  connectionString += `postgres://${info.user}:${info.password}@${
+  connectionString += `oracle://${info.user}:${info.password}@${
     info.host
     }:${port}/${info.database}`;
   return connectionString;
