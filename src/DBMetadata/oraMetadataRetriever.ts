@@ -9,6 +9,22 @@ import DBMetadata from '../models/dbMetadata';
 const pgp = pgInit();
 const poolCache: { [key: string]: pgInit.IDatabase<{}> } = {};
 
+
+const query = `select 
+       col.table_name as "tableName", 
+       col.column_name as "columnName", 
+       col.nullable as "isNullable",
+       col.data_type as "dataType", 
+       col.data_length as "characterMaximumLength", 
+       col.data_precision, 
+       col.data_scale,
+       col.column_id, 
+       col.owner as schema_name
+from sys.all_tab_columns col
+inner join sys.all_tables t on col.owner = t.owner 
+  and col.table_name = t.table_name`;
+
+
 const query = `SELECT
                           t.table_name as "tableName",
                           c.column_name as "columnName",
